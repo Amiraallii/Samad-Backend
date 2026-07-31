@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Samad.Application/Samad.Application.csproj" />
+  <Project Path="Samad.Domain/Samad.Domain.csproj" />
+  <Project Path="Samad.Infrastructure/Samad.Infrastructure.csproj" />
+  <Project Path="Samad.WebAPI/Samad.WebAPI.csproj" />
+</Solution>
