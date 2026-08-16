@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Samad.Domain.Entity;
-
 namespace Samad.Infrastructure.Context
 {
     public class SamadDbContext : DbContext
@@ -9,7 +8,6 @@ namespace Samad.Infrastructure.Context
         {
         }
 
-        // DbSets
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
@@ -21,7 +19,7 @@ namespace Samad.Infrastructure.Context
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+            modelBuilder.ApplyConfigurationsFromAssembly(typeof(SamadDbContext).Assembly);
         }
     }
 }
