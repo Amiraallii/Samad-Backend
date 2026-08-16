@@ -2,7 +2,7 @@
 
 namespace Samad.Domain.Entity
 {
-    public class CouncilReview
+    public class CouncilReview : IEntity<int>
     {
         public int Id { get; set; }
         public CouncilVote Vote { get; set; } 

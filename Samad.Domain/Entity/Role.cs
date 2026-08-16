@@ -1,6 +1,6 @@
 ﻿namespace Samad.Domain.Entity
 {
-    public class Role
+    public class Role : IEntity<int>
     {
         public int Id { get; set; }
         public string Title { get; set; }

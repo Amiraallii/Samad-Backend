@@ -21,9 +21,4 @@
     <ProjectReference Include="..\Samad.Domain\Samad.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="IRepositories\" />
-    <Folder Include="Repositories\" />
-  </ItemGroup>
-
 </Project>
