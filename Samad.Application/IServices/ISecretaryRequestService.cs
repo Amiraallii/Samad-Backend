@@ -2,21 +2,19 @@
 
 namespace Samad.Application.IServices
 {
-    public interface ICouncilReviewService
+    public interface ISecretaryRequestService
     {
-        Task<List<CouncilRequestDto>> GetAssignedRequests(
-            int councilMemberId,
+        Task<List<SecretaryRequestDto>> GetPendingRequests(
             CancellationToken cancellationToken = default);
 
-        Task<CouncilRequestDetailsDto> GetRequest(
+        Task<SecretaryRequestDetailsDto> GetRequest(
             int requestId,
-            int councilMemberId,
             CancellationToken cancellationToken = default);
 
-        Task SubmitReview(
+        Task SubmitDecision(
             int requestId,
-            int councilMemberId,
-            SubmitCouncilReviewDto dto,
+            int secretaryId,
+            SecretaryDecisionDto dto,
             CancellationToken cancellationToken = default);
     }
 }

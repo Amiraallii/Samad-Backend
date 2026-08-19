@@ -9,13 +9,32 @@ namespace Samad.Infrastructure.FluentConfiguration
         public void Configure(EntityTypeBuilder<Role> builder)
         {
             builder.HasKey(r => r.Id);
-            builder.Property(r => r.Title).IsRequired().HasMaxLength(50);
+
+            builder.Property(r => r.Title)
+                .IsRequired()
+                .HasMaxLength(50);
 
             builder.HasData(
-                new Role { Id = 1, Title = "Applicant" },
-                new Role { Id = 2, Title = "CouncilMember" },
-                new Role { Id = 3, Title = "Secretary" },
-                new Role { Id = 4, Title = "Admin" }
+                new Role
+                {
+                    Id = 1,
+                    Title = nameof(UserRole.Applicant)
+                },
+                new Role
+                {
+                    Id = 2,
+                    Title = nameof(UserRole.CouncilMember)
+                },
+                new Role
+                {
+                    Id = 3,
+                    Title = nameof(UserRole.Secretary)
+                },
+                new Role
+                {
+                    Id = 4,
+                    Title = nameof(UserRole.Admin)
+                }
             );
         }
     }

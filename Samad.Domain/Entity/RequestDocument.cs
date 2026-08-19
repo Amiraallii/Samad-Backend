@@ -5,7 +5,7 @@ namespace Samad.Domain.Entity
     public class RequestDocument : IEntity<int>
     {
         public int Id { get; set; }
-        public DocumentType Type { get; set; }
+        public string ContentType { get; set; }
         public string FileUrl { get; set; } 
 
         public int RequestId { get; set; }

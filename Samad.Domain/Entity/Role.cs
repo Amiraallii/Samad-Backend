@@ -5,7 +5,7 @@
         public int Id { get; set; }
         public string Title { get; set; }
         #region ' Relations '
-        public ICollection<UserRole> UserRoles { get; set; }
+        public ICollection<User> Users { get; set; }
         #endregion ' Relations '
     }
 }

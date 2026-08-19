@@ -8,11 +8,13 @@ namespace Samad.Domain.Enum
         Pending = 1,
         [Display(Name = "نقص مدارک")]
         NeedsRevision = 2,
-        [Display(Name = "در حال بررسی")]
-        UnderReview = 3,
+        [Display(Name = "در حال بررسی توسط مشاورین")]
+        UnderCouncilReview = 3,
+        [Display(Name = "در حال بررسی توسط تدبیر")]
+        AwaitingSecretary = 4,
         [Display(Name = "تایید نهایی دبیر")]
-        Approved = 4,
+        Approved = 5,
         [Display(Name = "رد نهایی دبیر")]
-        Rejected = 5
+        Rejected = 6
     }
 }

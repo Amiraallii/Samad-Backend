@@ -15,7 +15,12 @@ namespace Samad.Infrastructure.FluentConfiguration
                    .WithMany(r => r.CouncilReviews)
                    .HasForeignKey(cr => cr.RequestId)
                    .OnDelete(DeleteBehavior.Cascade);
-
+            builder.HasIndex(x => new
+            {
+                x.RequestId,
+                x.CouncilMemberId
+            })
+            .IsUnique();
             builder.HasOne(cr => cr.CouncilMember)
                    .WithMany(u => u.MyReviews)
                    .HasForeignKey(cr => cr.CouncilMemberId)

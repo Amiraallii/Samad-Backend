@@ -1,15 +1,10 @@
 ﻿namespace Samad.Domain.Entity
 {
-    public class UserRole
+    public enum UserRole : int
     {
-        public int UserId { get; set; }
-
-        public int RoleId { get; set; }
-
-
-        #region ' Relations '
-        public User User { get; set; }
-        public Role Role { get; set; }
-        #endregion ' Relations '
+        Applicant = 1,
+        CouncilMember = 2,
+        Secretary = 3,
+        Admin = 4,
     }
 }

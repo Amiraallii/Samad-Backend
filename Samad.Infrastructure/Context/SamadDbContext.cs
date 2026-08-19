@@ -10,7 +10,6 @@ namespace Samad.Infrastructure.Context
 
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
-        public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<Request> Requests { get; set; }
         public DbSet<RequestDocument> RequestDocuments { get; set; }
         public DbSet<CouncilReview> CouncilReviews { get; set; }

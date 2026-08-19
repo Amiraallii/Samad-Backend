@@ -19,6 +19,19 @@ namespace Samad.Infrastructure.FluentConfiguration
 
             builder.HasIndex(u => u.NationalCode).IsUnique();
             builder.HasIndex(u => u.PhoneNumber).IsUnique();
+            builder.HasData(new User
+            {
+                Id = 1,
+                BirthDate = new DateTime(2000, 7, 27),
+                CreatedAt = new DateTime(2000, 7, 27),
+                Email = "amiraliaghaeibs@gmail.com",
+                FirstName = "Amirali",
+                LastName = "Aghaei",
+                RoleId = 4,
+                PhoneNumber = "09120882458",
+                NationalCode = "2581288426",
+                PasswordHash = "AQAAAAIAAYagAAAAEB9aIlLnvh557v9Jn7OQBBTJIIbZC1gA5RVkFD+JCrl65djhtNZWAo2Bn9at/aLkVA=="
+            });
         }
     }
 }

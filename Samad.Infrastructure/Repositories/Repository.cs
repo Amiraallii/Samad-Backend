@@ -1,10 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Samad.Domain.Entity;
+using Samad.Infrastructure.Context;
 using Samad.Infrastructure.IRepositories;
 
 namespace Samad.Infrastructure.Repositories
 {
-    public class Repository<TEntity, TKey>(DbContext dbContext) : IRepository<TEntity, TKey> where TEntity : class, IEntity<TKey> where TKey : notnull
+    public class Repository<TEntity, TKey>(SamadDbContext dbContext) : IRepository<TEntity, TKey> where TEntity : class, IEntity<TKey> where TKey : notnull
     {
         private readonly DbSet<TEntity> _dbSet = dbContext.Set<TEntity>();
 

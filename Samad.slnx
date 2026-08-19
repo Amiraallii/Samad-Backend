@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="Samad.Application/Samad.Application.csproj" />
   <Project Path="Samad.Domain/Samad.Domain.csproj" />
+  <Project Path="Samad.Infrastructure.External/Samad.Infrastructure.External.csproj" Id="2b652c0f-c515-4ec2-a0a8-f56b86b32385" />
   <Project Path="Samad.Infrastructure/Samad.Infrastructure.csproj" />
   <Project Path="Samad.WebAPI/Samad.WebAPI.csproj" />
 </Solution>
