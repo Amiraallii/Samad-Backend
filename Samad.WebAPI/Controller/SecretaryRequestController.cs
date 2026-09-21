@@ -13,13 +13,25 @@ namespace Samad.WebAPI.Controller
         ISecretaryRequestService secretaryRequestService)
         : SamadController
     {
-        [HttpGet]
-        public async Task<IActionResult> GetRequests(
+        [HttpGet("initial-review")]
+        public async Task<IActionResult> GetInitialReviewRequests(
             CancellationToken cancellationToken)
         {
             var result =
                 await secretaryRequestService
-                    .GetPendingRequests(
+                    .GetInitialReviewRequests(
+                        cancellationToken);
+
+            return Ok(result);
+        }
+
+        [HttpGet("final-review")]
+        public async Task<IActionResult> GetFinalReviewRequests(
+            CancellationToken cancellationToken)
+        {
+            var result =
+                await secretaryRequestService
+                    .GetFinalReviewRequests(
                         cancellationToken);
 
             return Ok(result);
@@ -38,7 +50,18 @@ namespace Samad.WebAPI.Controller
 
             return Ok(result);
         }
+        [HttpGet("{requestId:int}/report")]
+        public async Task<IActionResult> GetReport(
+    int requestId,
+    CancellationToken cancellationToken)
+        {
+            var result =
+                await secretaryRequestService.GetReport(
+                    requestId,
+                    cancellationToken);
 
+            return Ok(result);
+        }
         [HttpPost("{requestId:int}/decision")]
         public async Task<IActionResult> SubmitDecision(
             int requestId,
@@ -55,7 +78,7 @@ namespace Samad.WebAPI.Controller
             return Ok(new
             {
                 Message =
-                    "تصمیم نهایی با موفقیت ثبت شد."
+                    "تصمیم دبیر با موفقیت ثبت شد."
             });
         }
     }

@@ -9,7 +9,9 @@ namespace Samad.Application.Dtos
         UrgencyLevel Urgency,
         RequestStatus Status,
         DateTime CreatedAt,
+        DateTime DeadlineAt,
         bool HasReviewed);
+
     public record CouncilRequestDetailsDto(
         int Id,
         string Title,
@@ -17,16 +19,18 @@ namespace Samad.Application.Dtos
         UrgencyLevel Urgency,
         RequestStatus Status,
         DateTime CreatedAt,
+        DateTime DeadlineAt,
         string ApplicantFullName,
         List<CouncilRequestDocumentDto> Documents,
         bool HasReviewed);
 
-    public record CouncilRequestDocumentDto(
+    public sealed record CouncilRequestDocumentDto(
         int Id,
         string FileUrl,
-        string ContentType);
+        string ContentType,
+        DocumentType DocumentType);
 
     public record SubmitCouncilReviewDto(
         CouncilVote Vote,
-        string Comment);
+        string? Comment);
 }

@@ -136,7 +136,10 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPasswordService, PasswordService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
-
+builder.Services.AddScoped<ICouncilSignatureService, CouncilSignatureService>();
+builder.Services.AddScoped<
+    IRequestWorkflowService,
+    RequestWorkflowService>();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

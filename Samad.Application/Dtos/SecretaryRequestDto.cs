@@ -9,11 +9,20 @@ namespace Samad.Application.Dtos
         UrgencyLevel Urgency,
         RequestStatus Status,
         DateTime CreatedAt,
+        DateTime DeadlineAt,
+        int DaysRemaining,
+        bool IsOverdue,
         string ApplicantFullName,
-        int TotalCouncilMembers,
+        int TotalCouncilReviewers,
+        int SubmittedVotes,
+        int PendingVotes,
         int ApprovedVotes,
         int RejectedVotes,
-        int NeedsRevisionVotes);
+        int NeedsRevisionVotes,
+        int TotalMainMembers,
+        int SignedMainMembers,
+        int PendingMainMemberSignatures);
+
     public record SecretaryRequestDetailsDto(
         int Id,
         string Title,
@@ -21,9 +30,16 @@ namespace Samad.Application.Dtos
         UrgencyLevel Urgency,
         RequestStatus Status,
         DateTime CreatedAt,
+        DateTime DeadlineAt,
+        int DaysRemaining,
+        bool IsOverdue,
         SecretaryApplicantDto Applicant,
         List<SecretaryDocumentDto> Documents,
-        List<SecretaryCouncilReviewDto> CouncilReviews);
+        List<SecretaryCouncilMemberDto> CouncilMembers,
+        List<SecretaryCouncilReviewDto> CouncilReviews,
+        List<SecretaryMainMemberSignatureDto> MainMemberSignatures,
+        List<SecretaryDecisionHistoryDto> SecretaryDecisions,
+        List<SecretaryStatusHistoryDto> StatusHistory);
 
     public record SecretaryApplicantDto(
         int Id,
@@ -36,15 +52,50 @@ namespace Samad.Application.Dtos
     public record SecretaryDocumentDto(
         int Id,
         string FileUrl,
-        string ContentType);
+        string ContentType,
+        DocumentType DocumentType);
+
+    public record SecretaryCouncilMemberDto(
+        int CouncilMemberId,
+        string CouncilMemberFullName,
+        CouncilAssignmentType AssignmentType,
+        bool HasVoted,
+        CouncilVote? Vote,
+        DateTime? ReviewDate,
+        bool HasSigned,
+        DateTime? SignedAt);
 
     public record SecretaryCouncilReviewDto(
         int CouncilMemberId,
         string CouncilMemberFullName,
         CouncilVote Vote,
-        string Comment,
+        string? Comment,
         DateTime ReviewDate);
+
+    public record SecretaryMainMemberSignatureDto(
+        int CouncilMemberId,
+        string CouncilMemberFullName,
+        bool IsSigned,
+        DateTime? SignedAt);
+
     public record SecretaryDecisionDto(
-      SecretaryDecision Decision,
-      string Comment);
+        SecretaryDecisionType Decision,
+        string? Comment);
+
+    public record SecretaryDecisionHistoryDto(
+        int SecretaryId,
+        string SecretaryFullName,
+        SecretaryDecisionStage Stage,
+        SecretaryDecisionType Decision,
+        string? Comment,
+        DateTime CreatedAt);
+
+    public record SecretaryStatusHistoryDto(
+        int Id,
+        RequestStatus? FromStatus,
+        RequestStatus ToStatus,
+        int? ChangedByUserId,
+        string? ChangedByUserFullName,
+        DateTime ChangedAt,
+        string? Comment);
 }

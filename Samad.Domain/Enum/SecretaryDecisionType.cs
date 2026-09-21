@@ -1,6 +1,6 @@
 ﻿namespace Samad.Domain.Enum
 {
-    public enum SecretaryDecision : byte
+    public enum SecretaryDecisionType : byte
     {
         Approved = 1,
         Rejected = 2,

@@ -9,30 +9,25 @@ using Samad.Infrastructure.IRepositories;
 namespace Samad.Application.Services
 {
     public class RequestService(
-    IRepository<Request, int> requestRepository,
-    IRepository<RequestDocument, int> documentRepository,
-    IRepository<RequestCouncilAssignment, int> assignmentRepository,
-    IRepository<User, int> userRepository,
-    IUnitOfWork unit,
-    IFileUploadService uploadService,
-    IFileStorage fileStorage,
-    AppSettings settings)
-    : IRequestService
+        IRepository<Request, int> requestRepository,
+        IRepository<RequestDocument, int> documentRepository,
+        IUnitOfWork unit,
+        IFileUploadService uploadService,
+        IFileStorage fileStorage,
+        IRequestWorkflowService workflowService,
+        AppSettings settings)
+        : IRequestService
     {
         public async Task AddRequest(
             NewRequest dto)
         {
-            var councilMemberIds =
-                await userRepository
-                    .Query()
-                    .Where(x =>
-                        x.RoleId == (int)UserRole.CouncilMember)
-                    .Select(x => x.Id)
-                    .ToListAsync();
-
-            if (councilMemberIds.Count == 0)
+            if (dto.Documents is null || dto.Documents.Count == 0)
+            {
                 throw new InvalidOperationException(
-                    "هیچ عضو شورایی تعریف نشده است.");
+                    "حداقل یک مدرک برای ثبت درخواست الزامی است.");
+            }
+
+            var createdAt = DateTime.UtcNow;
 
             var request = new Request
             {
@@ -40,59 +35,97 @@ namespace Samad.Application.Services
                 Description = dto.Description,
                 Title = dto.Title,
                 Urgency = dto.Urgency,
-                Status = RequestStatus.UnderCouncilReview,
-                CreatedAt = DateTime.UtcNow
+                Status = RequestStatus.AwaitingSecretaryInitialReview,
+                CreatedAt = createdAt,
+                DeadlineAt = CalculateDeadline(
+                    createdAt,
+                    dto.Urgency)
             };
 
-            foreach (var file in dto.files)
+            foreach (var document in dto.Documents)
             {
+                ValidateDocumentType(
+                    document.DocumentType);
+
                 var uploaded =
-                    await uploadService.SaveAsync(file);
+                    await uploadService.SaveAsync(
+                        document.File);
 
                 request.Documents.Add(
                     new RequestDocument
                     {
                         FileUrl = uploaded.Key,
-                        ContentType = uploaded.ContentType
-                    });
-            }
-
-            foreach (var memberId in councilMemberIds)
-            {
-                request.CouncilAssignments.Add(
-                    new RequestCouncilAssignment
-                    {
-                        CouncilMemberId = memberId
+                        ContentType = uploaded.ContentType,
+                        DocumentType = document.DocumentType
                     });
             }
 
             await requestRepository.AddAsync(request);
 
-            await unit.SaveChangesAsync();
+            var history =
+                new RequestStatusHistory
+                {
+                    Request = request,
+                    FromStatus = null,
+                    ToStatus =
+                        RequestStatus.AwaitingSecretaryInitialReview,
+                    ChangedByUserId = dto.ApplicantId,
+                    ChangedAt = DateTime.UtcNow,
+                    Comment =
+                        "درخواست توسط درخواست‌دهنده ثبت شد."
+                };
+
+            await unit
+                .SaveChangesAsync();
         }
 
         public async Task<List<RequestListDto>> GetMyRequests(
-    int applicantId,
-    CancellationToken ct = default)
+            int applicantId,
+            CancellationToken ct = default)
         {
-            return await requestRepository
-                .Query()
-                .Where(x => x.ApplicantId == applicantId)
-                .OrderByDescending(x => x.CreatedAt)
-                .Select(x => new RequestListDto(
-                    x.Id,
-                    x.Title,
-                    x.Description,
-                    x.Urgency,
-                    x.Status,
-                    x.CreatedAt))
-                .ToListAsync(ct);
+            var requests =
+                await requestRepository
+                    .Query()
+                    .Where(x =>
+                        x.ApplicantId == applicantId)
+                    .OrderByDescending(x => x.CreatedAt)
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.Title,
+                        x.Description,
+                        x.Urgency,
+                        x.Status,
+                        x.CreatedAt,
+                        x.DeadlineAt
+                    })
+                    .ToListAsync(ct);
+
+            return requests
+                .Select(x =>
+                {
+                    var daysRemaining =
+                        CalculateDaysRemaining(
+                            x.DeadlineAt);
+
+                    return new RequestListDto(
+                        x.Id,
+                        x.Title,
+                        x.Description,
+                        x.Urgency,
+                        x.Status,
+                        x.CreatedAt,
+                        x.DeadlineAt,
+                        daysRemaining,
+                        IsOverdue(x.DeadlineAt));
+                })
+                .ToList();
         }
 
         public async Task<RequestDetailsDto> GetMyRequest(
-    int requestId,
-    int applicantId,
-    CancellationToken ct = default)
+            int requestId,
+            int applicantId,
+            CancellationToken ct = default)
         {
             var request =
                 await requestRepository
@@ -105,8 +138,17 @@ namespace Samad.Application.Services
                         ct);
 
             if (request is null)
+            {
                 throw new KeyNotFoundException(
                     "درخواست یافت نشد.");
+            }
+
+            var daysRemaining =
+                CalculateDaysRemaining(
+                    request.DeadlineAt);
+
+            var isOverdue =
+                IsOverdue(request.DeadlineAt);
 
             return new RequestDetailsDto(
                 request.Id,
@@ -115,19 +157,24 @@ namespace Samad.Application.Services
                 request.Urgency,
                 request.Status,
                 request.CreatedAt,
-
+                request.DeadlineAt,
+                daysRemaining,
+                isOverdue,
                 request.Documents
-                    .Select(x => new RequestDocumentDto(
-                        x.Id,
-                        $"{settings.S3Storage.BaseUrlWithBucket.TrimEnd('/')}/{x.FileUrl.TrimStart('/')}",
-                        x.ContentType))
+                    .Select(x =>
+                        new RequestDocumentDto(
+                            x.Id,
+                            $"{settings.S3Storage.BaseUrlWithBucket.TrimEnd('/')}/{x.FileUrl.TrimStart('/')}",
+                            x.ContentType,
+                            x.DocumentType))
                     .ToList());
         }
+
         public async Task UpdateRequest(
-    int requestId,
-    int applicantId,
-    UpdateRequest dto,
-    CancellationToken ct = default)
+            int requestId,
+            int applicantId,
+            UpdateRequest dto,
+            CancellationToken ct = default)
         {
             var request =
                 await requestRepository
@@ -140,20 +187,27 @@ namespace Samad.Application.Services
                         ct);
 
             if (request is null)
+            {
                 throw new KeyNotFoundException(
                     "درخواست یافت نشد.");
+            }
 
             if (request.Status is not
-                RequestStatus.UnderCouncilReview and not
-                RequestStatus.NeedsRevision)
+                RequestStatus.AwaitingSecretaryInitialReview and
+                not RequestStatus.NeedsRevision)
             {
                 throw new InvalidOperationException(
                     "این درخواست دیگر قابل ویرایش نیست.");
             }
 
-            request.Title = dto.Title;
-            request.Description = dto.Description;
-            request.Urgency = dto.Urgency;
+            request.Title =
+                dto.Title;
+
+            request.Description =
+                dto.Description;
+
+            request.Urgency =
+                dto.Urgency;
 
             var documentsToDelete =
                 request.Documents
@@ -167,28 +221,46 @@ namespace Samad.Application.Services
                     document.FileUrl,
                     ct);
 
-                documentRepository.Delete(document);
+                documentRepository.Delete(
+                    document);
             }
 
-            foreach (var newFile in dto.Files)
+            foreach (var newDocument in dto.Documents)
             {
+                ValidateDocumentType(
+                    newDocument.DocumentType);
+
                 var uploaded =
-                    await uploadService.SaveAsync(newFile);
+                    await uploadService.SaveAsync(
+                        newDocument.File);
 
                 request.Documents.Add(
                     new RequestDocument
                     {
                         FileUrl = uploaded.Key,
-                        ContentType = uploaded.ContentType
+                        ContentType = uploaded.ContentType,
+                        DocumentType =
+                            newDocument.DocumentType
                     });
+            }
+
+            if (request.Status ==
+                RequestStatus.NeedsRevision)
+            {
+                await workflowService.ChangeStatus(
+                    request,
+                    RequestStatus.AwaitingSecretaryInitialReview,
+                    applicantId,
+                    "درخواست توسط درخواست‌دهنده اصلاح و مجدداً ارسال شد.");
             }
 
             await unit.SaveChangesAsync();
         }
+
         public async Task DeleteRequest(
-    int requestId,
-    int applicantId,
-    CancellationToken ct = default)
+            int requestId,
+            int applicantId,
+            CancellationToken ct = default)
         {
             var request =
                 await requestRepository
@@ -201,12 +273,14 @@ namespace Samad.Application.Services
                         ct);
 
             if (request is null)
+            {
                 throw new KeyNotFoundException(
                     "درخواست یافت نشد.");
+            }
 
             if (request.Status is not
-                RequestStatus.UnderCouncilReview and not
-                RequestStatus.NeedsRevision)
+                RequestStatus.AwaitingSecretaryInitialReview and
+                not RequestStatus.NeedsRevision)
             {
                 throw new InvalidOperationException(
                     "این درخواست دیگر قابل حذف نیست.");
@@ -223,7 +297,65 @@ namespace Samad.Application.Services
 
             await unit.SaveChangesAsync();
         }
-    }
 
-    
+        private static void ValidateDocumentType(
+            DocumentType documentType)
+        {
+            if (!Enum.IsDefined(
+                    typeof(DocumentType),
+                    documentType))
+            {
+                throw new ArgumentException(
+                    "نوع مدرک معتبر نیست.",
+                    nameof(documentType));
+            }
+        }
+
+        private static bool IsOverdue(
+            DateTime deadlineAt)
+        {
+            return deadlineAt < DateTime.UtcNow;
+        }
+
+        private static int CalculateDaysRemaining(
+            DateTime deadlineAt)
+        {
+            var remaining =
+                deadlineAt - DateTime.UtcNow;
+
+            return (int)Math.Ceiling(
+                remaining.TotalDays);
+        }
+
+        private DateTime CalculateDeadline(
+            DateTime createdAt,
+            UrgencyLevel urgency)
+        {
+            var weeks = urgency switch
+            {
+                UrgencyLevel.Normal =>
+                    settings.Deadline.NormalWeeks,
+
+                UrgencyLevel.Urgent =>
+                    settings.Deadline.UrgentWeeks,
+
+                UrgencyLevel.VeryUrgent =>
+                    settings.Deadline.VeryUrgentWeeks,
+
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(urgency),
+                    urgency,
+                    "سطح فوریت معتبر نیست.")
+            };
+
+            if (weeks <= 0)
+            {
+                throw new InvalidOperationException(
+                    "مدت زمان Deadline باید بیشتر از صفر باشد.");
+            }
+
+            return createdAt.AddDays(
+                weeks * 7);
+        }
     }
+}

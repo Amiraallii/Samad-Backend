@@ -3,37 +3,75 @@ using Microsoft.AspNetCore.Mvc;
 using Samad.Application.Dtos;
 using Samad.Application.IServices;
 using Samad.Domain.Entity;
+using Samad.Domain.Enum;
 
 namespace Samad.WebAPI.Controller
 {
     [ApiController]
     [Route("api/requests")]
-    public sealed class RequestController(IRequestService requestService) : SamadController
+    public sealed class RequestController(
+        IRequestService requestService)
+        : SamadController
     {
         [HttpPost]
-        [Authorize(Roles = "Applicant")]
+        [Authorize(Roles = nameof(UserRole.Applicant))]
         public async Task<IActionResult> NewRequest(
-    [FromForm] NewRequestModel request,
-    CancellationToken cancellationToken)
+            [FromForm] NewRequestModel request,
+            CancellationToken cancellationToken)
         {
-            var incomingFiles = new List<IncomingFile>();
+            var files = request.files ?? [];
+            var documentTypes = request.documentTypes ?? [];
+
+            if (files.Count == 0)
+            {
+                return BadRequest(
+                    "حداقل یک فایل برای ثبت درخواست الزامی است.");
+            }
+
+            if (files.Count != documentTypes.Count)
+            {
+                return BadRequest(
+                    "تعداد فایل‌ها و نوع مدارک باید برابر باشد.");
+            }
+
+            var incomingDocuments = new List<IncomingDocument>();
             var streams = new List<Stream>();
 
             try
             {
-                foreach (var file in request.files ?? [])
+                for (var i = 0; i < files.Count; i++)
                 {
+                    var file = files[i];
+
                     if (file is null || file.Length == 0)
-                        return BadRequest("فایل ارسال نشده است.");
+                    {
+                        return BadRequest(
+                            "یکی از فایل‌های ارسال‌شده خالی است.");
+                    }
+
+                    var documentType = documentTypes[i];
+
+                    if (!Enum.IsDefined(
+                            typeof(DocumentType),
+                            documentType))
+                    {
+                        return BadRequest(
+                            $"نوع مدرک برای فایل شماره {i + 1} معتبر نیست.");
+                    }
 
                     var stream = file.OpenReadStream();
                     streams.Add(stream);
 
-                    incomingFiles.Add(new IncomingFile(
+                    var incomingFile = new IncomingFile(
                         Stream: stream,
                         OriginalFileName: Path.GetFileName(file.FileName),
                         ClientContentType: file.ContentType,
-                        Length: file.Length));
+                        Length: file.Length);
+
+                    incomingDocuments.Add(
+                        new IncomingDocument(
+                            incomingFile,
+                            documentType));
                 }
 
                 var newRequest = new NewRequest(
@@ -41,7 +79,7 @@ namespace Samad.WebAPI.Controller
                     request.Description,
                     request.Urgency,
                     CurrentUserId,
-                    incomingFiles);
+                    incomingDocuments);
 
                 await requestService.AddRequest(newRequest);
 
@@ -50,14 +88,16 @@ namespace Samad.WebAPI.Controller
             finally
             {
                 foreach (var stream in streams)
+                {
                     await stream.DisposeAsync();
+                }
             }
         }
 
         [HttpGet("my")]
         [Authorize(Roles = nameof(UserRole.Applicant))]
         public async Task<IActionResult> GetMyRequests(
-    CancellationToken ct)
+            CancellationToken ct)
         {
             var result =
                 await requestService.GetMyRequests(
@@ -70,39 +110,72 @@ namespace Samad.WebAPI.Controller
         [HttpGet("{id:int}")]
         [Authorize(Roles = nameof(UserRole.Applicant))]
         public async Task<IActionResult> Get(
-    int id,
-    CancellationToken ct)
+            int id,
+            CancellationToken ct)
         {
-            return Ok(
+            var result =
                 await requestService.GetMyRequest(
                     id,
                     CurrentUserId,
-                    ct));
+                    ct);
+
+            return Ok(result);
         }
+
         [HttpPut("{id:int}")]
         [Authorize(Roles = nameof(UserRole.Applicant))]
         public async Task<IActionResult> Update(
-    int id,
-    [FromForm] UpdateRequestModel model,
-    CancellationToken ct)
+            int id,
+            [FromForm] UpdateRequestModel model,
+            CancellationToken ct)
         {
-            var incomingFiles = new List<IncomingFile>();
+            var files = model.Files ?? [];
+            var documentTypes = model.DocumentTypes ?? [];
+
+            if (files.Count != documentTypes.Count)
+            {
+                return BadRequest(
+                    "تعداد فایل‌ها و نوع مدارک باید برابر باشد.");
+            }
+
+            var incomingDocuments = new List<IncomingDocument>();
             var streams = new List<Stream>();
 
             try
             {
-                foreach (var file in model.Files ?? [])
+                for (var i = 0; i < files.Count; i++)
                 {
-                    var stream = file.OpenReadStream();
+                    var file = files[i];
 
+                    if (file is null || file.Length == 0)
+                    {
+                        return BadRequest(
+                            "یکی از فایل‌های ارسال‌شده خالی است.");
+                    }
+
+                    var documentType = documentTypes[i];
+
+                    if (!Enum.IsDefined(
+                            typeof(DocumentType),
+                            documentType))
+                    {
+                        return BadRequest(
+                            $"نوع مدرک برای فایل شماره {i + 1} معتبر نیست.");
+                    }
+
+                    var stream = file.OpenReadStream();
                     streams.Add(stream);
 
-                    incomingFiles.Add(
-                        new IncomingFile(
-                            stream,
-                            Path.GetFileName(file.FileName),
-                            file.ContentType,
-                            file.Length));
+                    var incomingFile = new IncomingFile(
+                        Stream: stream,
+                        OriginalFileName: Path.GetFileName(file.FileName),
+                        ClientContentType: file.ContentType,
+                        Length: file.Length);
+
+                    incomingDocuments.Add(
+                        new IncomingDocument(
+                            incomingFile,
+                            documentType));
                 }
 
                 var dto = new UpdateRequest(
@@ -110,7 +183,7 @@ namespace Samad.WebAPI.Controller
                     model.Description,
                     model.Urgency,
                     model.RemoveDocumentIds ?? [],
-                    incomingFiles);
+                    incomingDocuments);
 
                 await requestService.UpdateRequest(
                     id,
@@ -123,15 +196,17 @@ namespace Samad.WebAPI.Controller
             finally
             {
                 foreach (var stream in streams)
+                {
                     await stream.DisposeAsync();
+                }
             }
         }
 
         [HttpDelete("{id:int}")]
         [Authorize(Roles = nameof(UserRole.Applicant))]
         public async Task<IActionResult> Delete(
-    int id,
-    CancellationToken ct)
+            int id,
+            CancellationToken ct)
         {
             await requestService.DeleteRequest(
                 id,

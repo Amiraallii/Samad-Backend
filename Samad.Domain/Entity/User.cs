@@ -17,6 +17,7 @@
         public Role Role { get; set; }
         public ICollection<Request> MyRequests { get; set; }
         public ICollection<CouncilReview> MyReviews { get; set; }
+        public CouncilMember? CouncilMembership { get; set; }
         #endregion ' Relations '
     }
 }

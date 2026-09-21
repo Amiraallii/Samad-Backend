@@ -4,37 +4,42 @@ using Samad.Domain.Entity;
 
 namespace Samad.Infrastructure.FluentConfiguration
 {
-    public class RequestCouncilAssignmentConfiguration
-        : IEntityTypeConfiguration<RequestCouncilAssignment>
+    public class RequestStatusHistoryConfiguration
+        : IEntityTypeConfiguration<RequestStatusHistory>
     {
         public void Configure(
-            EntityTypeBuilder<RequestCouncilAssignment> builder)
+            EntityTypeBuilder<RequestStatusHistory> builder)
         {
             builder.HasKey(x => x.Id);
 
-            builder.Property(x => x.AssignmentType)
+            builder.Property(x => x.FromStatus)
+                .IsRequired(false);
+
+            builder.Property(x => x.ToStatus)
                 .IsRequired();
 
-            builder.Property(x => x.AssignedAt)
+            builder.Property(x => x.ChangedAt)
                 .IsRequired();
+
+            builder.Property(x => x.Comment)
+                .HasMaxLength(1000);
 
             builder.HasIndex(x => new
             {
                 x.RequestId,
-                x.CouncilMemberId
-            })
-            .IsUnique();
+                x.ChangedAt
+            });
 
             builder
                 .HasOne(x => x.Request)
-                .WithMany(x => x.CouncilAssignments)
+                .WithMany(x => x.StatusHistory)
                 .HasForeignKey(x => x.RequestId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder
-                .HasOne(x => x.CouncilMember)
+                .HasOne(x => x.ChangedByUser)
                 .WithMany()
-                .HasForeignKey(x => x.CouncilMemberId)
+                .HasForeignKey(x => x.ChangedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

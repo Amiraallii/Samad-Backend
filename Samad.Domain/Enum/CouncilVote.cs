@@ -6,9 +6,11 @@ namespace Samad.Domain.Enum
     {
         [Display(Name = "تایید")]
         Approved = 1,
-        [Display(Name = "تایید")]
+
+        [Display(Name = "رد")]
         Rejected = 2,
+
         [Display(Name = "نیاز به بررسی بیشتر")]
-        NeedsRevision = 3
+        RequestRevision = 3
     }
 }

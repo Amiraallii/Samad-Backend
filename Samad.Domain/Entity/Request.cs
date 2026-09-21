@@ -6,10 +6,10 @@ namespace Samad.Domain.Entity
     {
         public int Id { get; set; }
 
-        public string Title { get; set; }
+        public string Title { get; set; } = string.Empty;
 
-        public string Description { get; set; }
-
+        public string Description { get; set; } = string.Empty;
+        public DateTime DeadlineAt { get; set; }
         public UrgencyLevel Urgency { get; set; }
 
         public RequestStatus Status { get; set; }
@@ -18,16 +18,9 @@ namespace Samad.Domain.Entity
 
         public int ApplicantId { get; set; }
 
-        public int? SecretaryId { get; set; }
+        #region Relations
 
-        public string? FinalSecretaryComment { get; set; }
-
-        public DateTime? FinalDecisionDate { get; set; }
-
-
-        public User Applicant { get; set; }
-
-        public User? Secretary { get; set; }
+        public User Applicant { get; set; } = null!;
 
         public ICollection<RequestDocument> Documents { get; set; }
             = new List<RequestDocument>();
@@ -37,5 +30,16 @@ namespace Samad.Domain.Entity
 
         public ICollection<RequestCouncilAssignment> CouncilAssignments { get; set; }
             = new List<RequestCouncilAssignment>();
+
+        public ICollection<CouncilSignature> CouncilSignatures { get; set; }
+            = new List<CouncilSignature>();
+
+        public ICollection<RequestStatusHistory> StatusHistory { get; set; }
+            = new List<RequestStatusHistory>();
+
+        public ICollection<SecretaryDecision> SecretaryDecisions { get; set; }
+            = new List<SecretaryDecision>();
+
+        #endregion
     }
 }

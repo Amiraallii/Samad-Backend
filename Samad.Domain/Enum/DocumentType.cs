@@ -4,13 +4,19 @@ namespace Samad.Domain.Enum
 {
     public enum DocumentType : byte
     {
-        [Display(Name = " استشهاد نامه")]
-        Affidavit = 1,
-        [Display(Name = " سند رسمی")]
-        OfficialDeed = 2,
-        [Display(Name = " سند دادگاه")]
-        CourtDocument = 3,
-        [Display(Name = " سایر")]
-        Other = 4
+        [Display(Name = "مقاله")]
+        Article = 1,
+        [Display(Name = "پایان‌نامه")]
+        Thesis = 2,
+        [Display(Name = "پروپوزال")]
+        Proposal = 3,
+        [Display(Name = "طرح پژوهشی")]
+        ResearchPlan = 4,
+        [Display(Name = "گزارش پژوهشی")]
+        ResearchReport = 5,
+        [Display(Name = "کتاب")]
+        Book = 6,
+        [Display(Name = "سایر")]
+        Other = 7,
     }
 }

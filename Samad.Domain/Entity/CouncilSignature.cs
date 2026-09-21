@@ -1,8 +1,6 @@
-﻿using Samad.Domain.Enum;
-
-namespace Samad.Domain.Entity
+﻿namespace Samad.Domain.Entity
 {
-    public class RequestCouncilAssignment : IEntity<int>
+    public class CouncilSignature : IEntity<int>
     {
         public int Id { get; set; }
 
@@ -10,9 +8,9 @@ namespace Samad.Domain.Entity
 
         public int CouncilMemberId { get; set; }
 
-        public CouncilAssignmentType AssignmentType { get; set; }
+        public DateTime? SignedAt { get; set; }
 
-        public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
+        public bool IsSigned { get; set; }
 
         public Request Request { get; set; } = null!;
 

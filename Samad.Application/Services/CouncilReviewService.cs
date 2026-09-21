@@ -1,49 +1,49 @@
-﻿using Azure.Core;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Samad.Application.Dtos;
 using Samad.Application.IServices;
 using Samad.Domain.Entity;
 using Samad.Domain.Enum;
 using Samad.Infrastructure.IRepositories;
+
 namespace Samad.Application.Services
 {
     public sealed class CouncilReviewService(
-        IRepository<Domain.Entity.Request, int> requestRepository,
-        IRepository<CouncilReview, int> reviewRepository,
-        IRepository<RequestCouncilAssignment, int> assignmentRepository,
-        IUnitOfWork unitOfWork,
-        AppSettings settings)
+    IRepository<Request, int> requestRepository,
+    IRepository<CouncilReview, int> reviewRepository,
+    IRepository<RequestCouncilAssignment, int> assignmentRepository,
+    IRequestWorkflowService workflowService,
+    IUnitOfWork unitOfWork,
+    AppSettings settings)
         : ICouncilReviewService
     {
         public async Task<List<CouncilRequestDto>> GetAssignedRequests(
             int councilMemberId,
             CancellationToken cancellationToken = default)
         {
-            var result =
-                await assignmentRepository
-                    .Query()
-                    .Where(x =>
-                        x.CouncilMemberId == councilMemberId)
-                    .Where(x =>
-                        x.Request.Status == RequestStatus.UnderCouncilReview ||
-                        x.Request.Status == RequestStatus.UnderCouncilReview)
-                    .OrderByDescending(x =>
-                        x.Request.CreatedAt)
-                    .Select(x =>
-                        new CouncilRequestDto(
-                            x.Request.Id,
-                            x.Request.Title,
-                            x.Request.Description,
-                            x.Request.Urgency,
-                            x.Request.Status,
-                            x.Request.CreatedAt,
-
-                            x.Request.CouncilReviews.Any(r =>
+            return await assignmentRepository
+                .Query()
+                .Where(x =>
+                    x.CouncilMemberId == councilMemberId &&
+                    x.AssignmentType ==
+                    CouncilAssignmentType.Reviewer)
+                .Where(x =>
+                    x.Request.Status ==
+                    RequestStatus.UnderCouncilReview)
+                .OrderByDescending(x => x.Request.CreatedAt)
+                .Select(x =>
+                    new CouncilRequestDto(
+                        x.Request.Id,
+                        x.Request.Title,
+                        x.Request.Description,
+                        x.Request.Urgency,
+                        x.Request.Status,
+                        x.Request.CreatedAt,
+                        x.Request.DeadlineAt,
+                        x.Request.CouncilReviews.Any(
+                            r =>
                                 r.CouncilMemberId ==
                                 councilMemberId)))
-                    .ToListAsync(cancellationToken);
-
-            return result;
+                .ToListAsync(cancellationToken);
         }
 
         public async Task<CouncilRequestDetailsDto> GetRequest(
@@ -68,13 +68,20 @@ namespace Samad.Application.Services
                     "درخواست یافت نشد.");
             }
 
-            var isAssigned =
-                request.CouncilAssignments.Any(
-                    x =>
-                        x.CouncilMemberId ==
-                        councilMemberId);
+            if (request.Status !=
+                RequestStatus.UnderCouncilReview)
+            {
+                throw new InvalidOperationException(
+                    "این درخواست در مرحله بررسی شورا نیست.");
+            }
 
-            if (!isAssigned)
+            var assignment =
+                request.CouncilAssignments.FirstOrDefault(x =>
+                    x.CouncilMemberId == councilMemberId &&
+                    x.AssignmentType ==
+                    CouncilAssignmentType.Reviewer);
+
+            if (assignment is null)
             {
                 throw new UnauthorizedAccessException(
                     "این درخواست به شما تخصیص داده نشده است.");
@@ -92,22 +99,22 @@ namespace Samad.Application.Services
                         new CouncilRequestDocumentDto(
                             x.Id,
                             BuildFileUrl(x.FileUrl),
-                            x.ContentType))
+                            x.ContentType,
+                            x.DocumentType))
                     .ToList();
 
             return new CouncilRequestDetailsDto(
-                request.Id,
-                request.Title,
-                request.Description,
-                request.Urgency,
-                request.Status,
-                request.CreatedAt,
-
-                $"{request.Applicant.FirstName} {request.Applicant.LastName}",
-
-                documents,
-
-                hasReviewed);
+    request.Id,
+    request.Title,
+    request.Description,
+    request.Urgency,
+    request.Status,
+    request.CreatedAt,
+    request.DeadlineAt,
+    $"{request.Applicant.FirstName} " +
+    $"{request.Applicant.LastName}",
+    documents,
+    hasReviewed);
         }
 
         public async Task SubmitReview(
@@ -116,6 +123,8 @@ namespace Samad.Application.Services
             SubmitCouncilReviewDto dto,
             CancellationToken cancellationToken = default)
         {
+            ValidateVote(dto.Vote);
+
             var request =
                 await requestRepository
                     .QueryTracking()
@@ -131,24 +140,23 @@ namespace Samad.Application.Services
                     "درخواست یافت نشد.");
             }
 
-            var isAssigned =
-                request.CouncilAssignments.Any(
-                    x =>
-                        x.CouncilMemberId ==
-                        councilMemberId);
-
-            if (!isAssigned)
-            {
-                throw new UnauthorizedAccessException(
-                    "این درخواست به شما تخصیص داده نشده است.");
-            }
-
-            if (request.Status is not
-                RequestStatus.UnderCouncilReview and not
+            if (request.Status !=
                 RequestStatus.UnderCouncilReview)
             {
                 throw new InvalidOperationException(
                     "این درخواست در مرحله بررسی شورا نیست.");
+            }
+
+            var assignment =
+                request.CouncilAssignments.FirstOrDefault(x =>
+                    x.CouncilMemberId == councilMemberId &&
+                    x.AssignmentType ==
+                    CouncilAssignmentType.Reviewer);
+
+            if (assignment is null)
+            {
+                throw new UnauthorizedAccessException(
+                    "این درخواست به شما تخصیص داده نشده است.");
             }
 
             var alreadyReviewed =
@@ -163,26 +171,17 @@ namespace Samad.Application.Services
                     "شما قبلاً برای این درخواست نظر ثبت کرده‌اید.");
             }
 
-            var review = new CouncilReview
-            {
-                RequestId = requestId,
-
-                CouncilMemberId =
-                    councilMemberId,
-
-                Vote = dto.Vote,
-
-                Comment =
-                    dto.Comment.Trim(),
-
-                ReviewDate =
-                    DateTime.UtcNow
-            };
+            var review =
+                new CouncilReview
+                {
+                    RequestId = requestId,
+                    CouncilMemberId = councilMemberId,
+                    Vote = dto.Vote,
+                    Comment = dto.Comment?.Trim(),
+                    ReviewDate = DateTime.UtcNow
+                };
 
             await reviewRepository.AddAsync(review);
-
-            request.Status =
-                RequestStatus.UnderCouncilReview;
 
             await unitOfWork.SaveChangesAsync();
 
@@ -199,21 +198,37 @@ namespace Samad.Application.Services
                 await assignmentRepository
                     .Query()
                     .CountAsync(
-                        x => x.RequestId == requestId,
-                        cancellationToken);
-
-            var submittedVotes =
-                await reviewRepository
-                    .Query()
-                    .CountAsync(
-                        x => x.RequestId == requestId,
+                        x =>
+                            x.RequestId == requestId &&
+                            x.AssignmentType ==
+                            CouncilAssignmentType.Reviewer,
                         cancellationToken);
 
             if (requiredVotes == 0)
+            {
                 return;
+            }
+
+            var submittedVotes =
+    await reviewRepository
+        .Query()
+        .CountAsync(
+            review =>
+                review.RequestId == requestId &&
+                assignmentRepository
+                    .Query()
+                    .Any(assignment =>
+                        assignment.RequestId == requestId &&
+                        assignment.CouncilMemberId ==
+                            review.CouncilMemberId &&
+                        assignment.AssignmentType ==
+                            CouncilAssignmentType.Reviewer),
+            cancellationToken);
 
             if (submittedVotes < requiredVotes)
+            {
                 return;
+            }
 
             var request =
                 await requestRepository
@@ -222,19 +237,51 @@ namespace Samad.Application.Services
                         x => x.Id == requestId,
                         cancellationToken);
 
+            if (request.Status !=
+                RequestStatus.UnderCouncilReview)
+            {
+                return;
+            }
+
+            var oldStatus =
+                request.Status;
+
             request.Status =
-                RequestStatus.AwaitingSecretary;
+                RequestStatus.AwaitingSecretaryFinalReview;
+
+            await workflowService.ChangeStatus(
+    request,
+    RequestStatus.AwaitingSecretaryFinalReview,
+    null,
+    "تمام اعضای شورای بررسی‌کننده نظر خود را ثبت کردند.");
 
             await unitOfWork.SaveChangesAsync();
         }
 
-        private string BuildFileUrl(string fileUrl)
+        private static void ValidateVote(
+            CouncilVote vote)
+        {
+            if (!Enum.IsDefined(
+                    typeof(CouncilVote),
+                    vote))
+            {
+                throw new ArgumentException(
+                    "نوع رأی معتبر نیست.",
+                    nameof(vote));
+            }
+        }
+
+        private string BuildFileUrl(
+            string fileUrl)
         {
             if (string.IsNullOrWhiteSpace(fileUrl))
+            {
                 return string.Empty;
+            }
 
             return
-                $"{settings.S3Storage.BaseUrlWithBucket.TrimEnd('/')}/{fileUrl.TrimStart('/')}";
+                $"{settings.S3Storage.BaseUrlWithBucket.TrimEnd('/')}/" +
+                $"{fileUrl.TrimStart('/')}";
         }
     }
 }

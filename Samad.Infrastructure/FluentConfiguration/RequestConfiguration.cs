@@ -4,24 +4,40 @@ using Samad.Domain.Entity;
 
 namespace Samad.Infrastructure.FluentConfiguration
 {
-    public class RequestConfiguration : IEntityTypeConfiguration<Request>
+    public class RequestConfiguration
+        : IEntityTypeConfiguration<Request>
     {
-        public void Configure(EntityTypeBuilder<Request> builder)
+        public void Configure(
+            EntityTypeBuilder<Request> builder)
         {
             builder.HasKey(r => r.Id);
-            builder.Property(r => r.Title).IsRequired().HasMaxLength(200);
-            builder.Property(r => r.Description).HasMaxLength(1000);
-            builder.Property(r => r.FinalSecretaryComment).HasMaxLength(500);
+
+            builder.Property(r => r.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            builder.Property(r => r.Description)
+                .IsRequired()
+                .HasMaxLength(1000);
+
+            builder.Property(r => r.Status)
+                .IsRequired();
+
+            builder.Property(r => r.Urgency)
+                .IsRequired();
+
+            builder.Property(r => r.CreatedAt)
+                .IsRequired();
+
+            builder.Property(r => r.DeadlineAt)
+                .IsRequired();
+
+            builder.HasIndex(r => r.DeadlineAt);
 
             builder.HasOne(r => r.Applicant)
-                   .WithMany(u => u.MyRequests)
-                   .HasForeignKey(r => r.ApplicantId)
-                   .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(r => r.Secretary)
-                   .WithMany() 
-                   .HasForeignKey(r => r.SecretaryId)
-                   .OnDelete(DeleteBehavior.Restrict);
+                .WithMany(u => u.MyRequests)
+                .HasForeignKey(r => r.ApplicantId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
