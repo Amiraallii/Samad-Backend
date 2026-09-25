@@ -243,12 +243,6 @@ namespace Samad.Application.Services
                 return;
             }
 
-            var oldStatus =
-                request.Status;
-
-            request.Status =
-                RequestStatus.AwaitingSecretaryFinalReview;
-
             await workflowService.ChangeStatus(
     request,
     RequestStatus.AwaitingSecretaryFinalReview,

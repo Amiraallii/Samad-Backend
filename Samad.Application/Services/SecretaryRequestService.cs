@@ -307,10 +307,10 @@ namespace Samad.Application.Services
         }
 
         public async Task SubmitDecision(
-            int requestId,
-            int secretaryId,
-            SecretaryDecisionDto dto,
-            CancellationToken cancellationToken = default)
+     int requestId,
+     int secretaryId,
+     SecretaryDecisionDto dto,
+     CancellationToken cancellationToken = default)
         {
             var request =
                 await requestRepository
@@ -362,12 +362,11 @@ namespace Samad.Application.Services
 
             await unitOfWork.SaveChangesAsync();
         }
-
         private async Task SubmitInitialDecision(
-            Request request,
-            int secretaryId,
-            SecretaryDecisionDto dto,
-            CancellationToken cancellationToken)
+    Request request,
+    int secretaryId,
+    SecretaryDecisionDto dto,
+    CancellationToken cancellationToken)
         {
             if (dto.Decision ==
                 SecretaryDecisionType.Rejected)
@@ -389,6 +388,9 @@ namespace Samad.Application.Services
                         "تصمیم دبیر معتبر نیست.")
                 };
 
+            var comment =
+                dto.Comment?.Trim();
+
             await secretaryDecisionRepository.AddAsync(
                 new SecretaryDecision
                 {
@@ -396,21 +398,16 @@ namespace Samad.Application.Services
                     SecretaryId = secretaryId,
                     Stage = SecretaryDecisionStage.InitialReview,
                     Decision = dto.Decision,
-                    Comment = dto.Comment?.Trim(),
+                    Comment = comment,
                     CreatedAt = DateTime.UtcNow
                 });
 
-            var oldStatus =
-                request.Status;
-
-            request.Status =
-                newStatus;
-
+            // فقط WorkflowService اجازه تغییر Status را دارد
             await workflowService.ChangeStatus(
-    request,
-    newStatus,
-    secretaryId,
-    dto.Comment);
+                request,
+                newStatus,
+                secretaryId,
+                comment);
 
             if (newStatus ==
                 RequestStatus.UnderCouncilReview)
@@ -420,36 +417,30 @@ namespace Samad.Application.Services
                     cancellationToken);
             }
         }
-
         private async Task SubmitFinalDecision(
     Request request,
     int secretaryId,
     SecretaryDecisionDto dto,
     CancellationToken cancellationToken)
         {
-            var newStatus = dto.Decision switch
-            {
-                SecretaryDecisionType.Approved =>
-                    RequestStatus.AwaitingMainCouncilApproval,
+            var newStatus =
+                dto.Decision switch
+                {
+                    SecretaryDecisionType.Approved =>
+                        RequestStatus.AwaitingMainCouncilApproval,
 
-                SecretaryDecisionType.Rejected =>
-                    RequestStatus.Rejected,
+                    SecretaryDecisionType.Rejected =>
+                        RequestStatus.Rejected,
 
-                SecretaryDecisionType.NeedsRevision =>
-                    RequestStatus.NeedsRevision,
+                    SecretaryDecisionType.NeedsRevision =>
+                        RequestStatus.NeedsRevision,
 
-                _ => throw new InvalidOperationException(
-                    "تصمیم دبیر معتبر نیست.")
-            };
+                    _ => throw new InvalidOperationException(
+                        "تصمیم دبیر معتبر نیست.")
+                };
 
-            if (dto.Decision == SecretaryDecisionType.Approved)
-            {
-                await AssignMainCouncilMembers(
-                    request,
-                    cancellationToken);
-            }
-
-            var comment = dto.Comment?.Trim();
+            var comment =
+                dto.Comment?.Trim();
 
             await secretaryDecisionRepository.AddAsync(
                 new SecretaryDecision
@@ -462,15 +453,21 @@ namespace Samad.Application.Services
                     CreatedAt = DateTime.UtcNow
                 });
 
-            var oldStatus = request.Status;
+            // اگر تایید نهایی شد، اعضای اصلی را برای امضا تخصیص بده
+            if (newStatus ==
+                RequestStatus.AwaitingMainCouncilApproval)
+            {
+                await AssignMainCouncilMembers(
+                    request,
+                    cancellationToken);
+            }
 
-            request.Status = newStatus;
-
+            // فقط WorkflowService وضعیت را تغییر می‌دهد
             await workflowService.ChangeStatus(
-    request,
-    newStatus,
-    secretaryId,
-    comment);
+                request,
+                newStatus,
+                secretaryId,
+                comment);
         }
         private async Task AssignMainCouncilMembers(
     Request request,

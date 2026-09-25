@@ -27,13 +27,14 @@ namespace Samad.Application.Services
                     RequestStatus.AwaitingMainCouncilApproval)
                 .OrderByDescending(x => x.Request.CreatedAt)
                 .Select(x =>
-                    new CouncilSignatureDto(
-                        x.CouncilMemberId,
-                        x.CouncilMember.FirstName +
-                        " " +
-                        x.CouncilMember.LastName,
-                        x.IsSigned,
-                        x.SignedAt))
+    new CouncilSignatureDto(
+        x.RequestId,
+        x.CouncilMemberId,
+        x.CouncilMember.FirstName +
+        " " +
+        x.CouncilMember.LastName,
+        x.IsSigned,
+        x.SignedAt))
                 .ToListAsync(cancellationToken);
         }
 
@@ -96,6 +97,7 @@ namespace Samad.Application.Services
                                     x.CouncilMemberId);
 
                         return new CouncilSignatureDto(
+                            x.RequestId,
                             x.CouncilMemberId,
                             x.CouncilMember.FirstName +
                             " " +
@@ -228,16 +230,11 @@ namespace Samad.Application.Services
                 return;
             }
 
-            var oldStatus = request.Status;
-
-            request.Status =
-                RequestStatus.Approved;
-
             await workflowService.ChangeStatus(
-    request,
-    RequestStatus.Approved,
-    null,
-    "تمام اعضای اصلی شورا درخواست را امضا کردند.");
+     request,
+     RequestStatus.Approved,
+     null,
+     "تمام اعضای اصلی شورا درخواست را امضا کردند.");
 
             await unitOfWork.SaveChangesAsync();
         }

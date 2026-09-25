@@ -3,11 +3,12 @@
     public sealed record CouncilSignatureRequestDto(
         bool Confirm);
 
-    public sealed record CouncilSignatureDto(
-        int CouncilMemberId,
-        string CouncilMemberFullName,
-        bool IsSigned,
-        DateTime? SignedAt);
+    public record CouncilSignatureDto(
+    int RequestId,
+    int CouncilMemberId,
+    string CouncilMemberFullName,
+    bool IsSigned,
+    DateTime? SignedAt);
 
     public sealed record CouncilSignatureDetailsDto(
         int RequestId,
